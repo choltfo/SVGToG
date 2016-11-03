@@ -9,6 +9,18 @@
 #define TOOLPATH_HPP_
 
 #include <vector>
+#include <string>
+
+// Temporary measure.
+struct Shape {
+	std::string name;
+	std::string command;
+
+	Shape (std::string na, std::string com) {
+		name = na;
+		command = com;
+	}
+};
 
 /**
  * Should encompass all the information that the plotter is capable of reproducing.
@@ -18,8 +30,8 @@
  *
  */
 class ToolPath {
-
-
+public:
+	std::vector<Shape> shapes;
 };
 
 
