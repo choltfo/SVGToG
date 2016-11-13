@@ -24,7 +24,7 @@ using namespace tinyxml2;
 using std::string;
 //using namespace std;
 
-double sFactor = 20.0;
+double sFactor = 1.0;
 
 void gToG (std::string coords, std::ofstream fout) {
 	std::stringstream ss;
@@ -42,6 +42,7 @@ string dToG (string d, double scaleFactor = 1) {
 	std::stringstream output;
 
 	Vector2D point;
+	bool relative = false;
 
 	std::stringstream str;
 	str << d;
@@ -51,32 +52,38 @@ string dToG (string d, double scaleFactor = 1) {
 	char rip = ' ';
 
 	str.clear();
-	std::cout << "Starting interpretation." << std::endl;
-
-	while (str.peek() > 0) {
-		//std::cout << "Peek is " << (char)str.peek() << " (" << (char)(str.peek()&0b11011111)<< ")"<< std::endl;
-		//while (!(str.peek() == '\n' || str.peek() == '\r' || str.peek() == ' ') && !str.fail()) {
-		while (str.peek() > 0 &&
-				!((
+	std::cout << "Starting interpretation..." << std::endl<< std::endl;
+	int test = 0;
+	while (str) {
+		while (!((
 				(str.peek()&0b11011111) >= 'A' && (str.peek()&0b11011111) <= 'Z') ||
 				(str.peek() >= '0' && str.peek() <= '9'))
 			) {
+			std::cout << "Peek is " << str.peek() << std::endl;
 			str >> rip; // Munch through, one char at a time!
-			//std::cout << "Ripped " << (char)rip << std::endl;
-			//std::cout << str.str() << std::endl;
+			test++;
 		}
+
 		// std::cout << "Found data: " << (char)str.peek()<< std::endl;
 		// These can upper case or lower case.
 		if ((str.peek()&0b11011111) >= 'A' && (str.peek()&0b11011111) <= 'Z') {
 			// Opcode!
 			char com = ' ';
 			str >> com;
-			com = com &0b11011111;
 
+			relative = com > 'Z'; // lowercase is a relative command.
+
+			com = com&0b11011111;
+			std::cout << com << std::endl;
 			switch (com) {
 			case 'M': // Disengage pen. Queue move, immediate.
 				output << "T0 M6" << std::endl;
-				std::cout << "T0 M6" << std::endl;
+				//std::cout << "T0 M6" << std::endl;
+				lastCom = com;
+				break;
+			case 'C': // Engage pen. Queue move, curved.. // TODO: Make this actually work.
+				output << "T1 M6" << std::endl;
+				//std::cout << "T0 M6" << std::endl;
 				lastCom = com;
 				break;
 			case 'L': // Disengage pen. Queue move, linear.
@@ -87,30 +94,43 @@ string dToG (string d, double scaleFactor = 1) {
 			}
 		} else {
 			// Should be a vector.
-			str >> point;
-			point.x *= scaleFactor;
-			point.y *= scaleFactor;
+			Vector2D newPoint(0,0);
+			str >> newPoint;
+
+			newPoint *= scaleFactor;
+
+			if (relative) {
+				point += newPoint;
+			} else {
+				point = newPoint;
+			}
+
+
 			switch (lastCom) {
 			case 'M': // Queue move, immediate.
 				output << "G0 X" << point.x << " Y" << point.y << std::endl;
+				break;
+			case 'C': // Queue move, immediate.
+				output << "G1 X" << point.x << " Y" << point.y << std::endl;
 				break;
 			case 'L': // Queue move, linear.
 				output << "G1 X" << point.x << " Y" << point.y << std::endl;
 				break;
 			}
 		}
-		//std::cout << "Peek is " << str.peek() << std::endl;
 	}
 
+
+
 	//std::cout << output.str() << std::endl;
-	std::cout << "Done!" << std::endl;
+	std::cout << "Done! " << test << std::endl;
 
 	return output.str();
 }
 
 int main() {
 	XMLDocument doc;
-	doc.LoadFile("TestSVG.svg");
+	doc.LoadFile("Maple_Leaf.svg");
 
 	std::ofstream fout("G-out.ncc");
 
@@ -119,14 +139,19 @@ int main() {
 
 	XMLElement* svg = doc.RootElement();
 
-	std::cout << svg->Name() << std::endl;
+	//std::cout << svg->Name() << std::endl;
 
 	string path = "";
+
+	// TODO: Make this more versatile.
+	XMLNode * iterator = 0x0;
 
 	if (svg->FirstChildElement("g")) {
 		if (svg->FirstChildElement("g")->FirstChildElement("g")) {
 			if (svg->FirstChildElement("g")->FirstChildElement("g")->FirstChildElement("path")) {
-				path = svg->FirstChildElement("g")->FirstChildElement("g")->FirstChildElement("path")->Attribute("d");
+				//while (svg->FirstChildElement("g")->FirstChildElement("g")->FirstChildElement("path")->NextSibling()) {
+					path = svg->FirstChildElement("g")->FirstChildElement("g")->FirstChildElement("path")->Attribute("d");
+				//}
 			}
 		} else if (svg->FirstChildElement("g")->FirstChildElement("path")) {
 			path = svg->FirstChildElement("g")->FirstChildElement("path")->Attribute("d");
@@ -145,7 +170,7 @@ int main() {
 
 
 	std::cout << path << std::endl;
-	std::cout << dToG(path,0.01) << std::endl;
+	std::cout << "(Output:)" <<std::endl << dToG(path,0.01) << std::endl;
 
 	//std::cout << "file contains svg element!" << std::endl;
 
