@@ -97,7 +97,7 @@ string dToG (string d, double scaleFactor = 1) {
 				output << "T3 M6" << std::endl;
 				output << "(C)" << std::endl;
 				//std::cout << "T0 M6" << std::endl;
-				curCom = com;
+				curCom = '2';
 				break;
 			case 'L': // Disengage pen. Queue move, linear.
 				// TODO: configure tool changes properly.
@@ -114,6 +114,10 @@ string dToG (string d, double scaleFactor = 1) {
 			default: // Unimplemented command.
 				break;
 			}
+
+
+
+
 		} else if ((str.peek() >= '0' && str.peek() <= '9') || str.peek() == '-') {
 			std::cout << "Vector start is " << (char)str.peek() << std::endl;
 			// Should be a vector.
@@ -148,16 +152,23 @@ string dToG (string d, double scaleFactor = 1) {
 			case 'C': // Queue move, immediate.
 				//output << "G1 X" << newPoint.x << " Y" << newPoint.y << std::endl;
 				curCom = '1';
-				point -= newPoint;
+				if (relative)point -= newPoint;
 				break;
 			case 'L': // Queue move, linear.
 				output << "G1 X" << curPoint.x << " Y" << curPoint.y << std::endl;
 				output << "T1 M6" << std::endl;
 				break;
+			case '2':
+				curCom = '1';
+				if (relative)point -= newPoint;
+				break;
 			case '1':
-				curCom = 'L';
-
-				point -= newPoint;
+				curCom = '0';
+				if (relative)point -= newPoint;
+				break;
+			case '0':
+				curCom = '2';
+				output << "G1 X" << curPoint.x << " Y" << curPoint.y << std::endl;
 				break;
 			default:
 				break;
