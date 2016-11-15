@@ -146,7 +146,9 @@ std::ostream& operator<<(std::ostream& os, const Vector2D& v) {
 
 std::istream& operator>>(std::istream& is, Vector2D& v) {
     double tX, tY;
-    is >> tX >> tY;
+    is >> tX;
+    is.ignore(100,',');
+	is >> tY;
     v.SetXY(tX, tY);
     return is;
 }

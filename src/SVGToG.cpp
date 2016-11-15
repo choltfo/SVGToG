@@ -44,60 +44,85 @@ string dToG (string d, double scaleFactor = 1) {
 	Vector2D point;
 	bool relative = false;
 
+	Vector2D start;
+
 	std::stringstream str;
 	str << d;
 
-	char lastCom = '\0';
+	char curCom = 'L';
+	char priorCom = '\0';
 
 	char rip = ' ';
 
+	int vecCount = 0;
+
 	str.clear();
 	std::cout << "Starting interpretation..." << std::endl<< std::endl;
-	int test = 0;
 	while (str) {
-		while (!((
+		/*while (!((
 				(str.peek()&0b11011111) >= 'A' && (str.peek()&0b11011111) <= 'Z') ||
 				(str.peek() >= '0' && str.peek() <= '9'))
 			) {
-			std::cout << "Peek is " << str.peek() << std::endl;
+			std::cout << "Peek is '" << (char)str.peek() << '\'' << std::endl;
 			str >> rip; // Munch through, one char at a time!
 			test++;
-		}
+		}*/
 
 		// std::cout << "Found data: " << (char)str.peek()<< std::endl;
 		// These can upper case or lower case.
 		if ((str.peek()&0b11011111) >= 'A' && (str.peek()&0b11011111) <= 'Z') {
 			// Opcode!
+			std::cout << "Operator is " << (char)str.peek() << std::endl;
+
+			priorCom = curCom;
+
 			char com = ' ';
 			str >> com;
 
 			relative = com > 'Z'; // lowercase is a relative command.
 
 			com = com&0b11011111;
-			std::cout << com << std::endl;
+
+			std::cout << com << (relative?", relative":"") << std::endl;
+
+
 			switch (com) {
 			case 'M': // Disengage pen. Queue move, immediate.
 				output << "T0 M6" << std::endl;
 				//std::cout << "T0 M6" << std::endl;
-				lastCom = com;
+				output << "(M)" << std::endl;
+				curCom = com;
 				break;
 			case 'C': // Engage pen. Queue move, curved.. // TODO: Make this actually work.
-				output << "T1 M6" << std::endl;
+				output << "T3 M6" << std::endl;
+				output << "(C)" << std::endl;
 				//std::cout << "T0 M6" << std::endl;
-				lastCom = com;
+				curCom = com;
 				break;
 			case 'L': // Disengage pen. Queue move, linear.
 				// TODO: configure tool changes properly.
 				output << "T1 M6" << std::endl;
-				lastCom = com;
+				output << "(L)" << std::endl;
+				curCom = com;
+				break;
+			case 'Z': // Close shape.
+				output << "G1 X" << (start*scaleFactor).x << " Y" << (start*scaleFactor).y << std::endl;
+				output << "(Z)" << std::endl;
+				point = start;
+				curCom = 'L';
+				break;
+			default: // Unimplemented command.
 				break;
 			}
-		} else {
+		} else if ((str.peek() >= '0' && str.peek() <= '9') || str.peek() == '-') {
+			std::cout << "Vector start is " << (char)str.peek() << std::endl;
 			// Should be a vector.
+
 			Vector2D newPoint(0,0);
 			str >> newPoint;
 
-			newPoint *= scaleFactor;
+
+			std::cout << "Input: " << newPoint << (relative?", relative":"") << std::endl;
 
 			if (relative) {
 				point += newPoint;
@@ -105,35 +130,59 @@ string dToG (string d, double scaleFactor = 1) {
 				point = newPoint;
 			}
 
+			Vector2D curPoint = point;
 
-			switch (lastCom) {
+			curPoint *= scaleFactor;
+
+			std::cout << "Point: " << curPoint << ", "<< curPoint<< std::endl;
+
+			if (!relative) output << "T2 M6" << std::endl;
+
+			switch (curCom) {
 			case 'M': // Queue move, immediate.
-				output << "G0 X" << point.x << " Y" << point.y << std::endl;
+				output << "G0 X" << curPoint.x << " Y" << curPoint.y << std::endl;
+				curCom = 'L'; // Next coordinates are implicit Lines, with same relativity setting.
+				start = newPoint;
+				output << "T1 M6" << std::endl;
 				break;
 			case 'C': // Queue move, immediate.
-				output << "G1 X" << point.x << " Y" << point.y << std::endl;
+				//output << "G1 X" << newPoint.x << " Y" << newPoint.y << std::endl;
+				curCom = '1';
+				point -= newPoint;
 				break;
 			case 'L': // Queue move, linear.
-				output << "G1 X" << point.x << " Y" << point.y << std::endl;
+				output << "G1 X" << curPoint.x << " Y" << curPoint.y << std::endl;
+				output << "T1 M6" << std::endl;
+				break;
+			case '1':
+				curCom = 'L';
+
+				point -= newPoint;
+				break;
+			default:
 				break;
 			}
+
+
+
+			vecCount++;
+
+		} else {
+			str >> std::ws;
 		}
+
 	}
 
-
-
-	//std::cout << output.str() << std::endl;
-	std::cout << "Done! " << test << std::endl;
-
+	std::cout << vecCount << std::endl;
 	return output.str();
 }
 
 int main() {
 	XMLDocument doc;
 	doc.LoadFile("Maple_Leaf.svg");
+	//doc.LoadFile("TestSVG.svg");
 
 	std::ofstream fout("G-out.ncc");
-
 
 	ToolPath tp;
 
@@ -144,7 +193,6 @@ int main() {
 	string path = "";
 
 	// TODO: Make this more versatile.
-	XMLNode * iterator = 0x0;
 
 	if (svg->FirstChildElement("g")) {
 		if (svg->FirstChildElement("g")->FirstChildElement("g")) {
@@ -169,26 +217,10 @@ int main() {
 
 
 
-	std::cout << path << std::endl;
-	std::cout << "(Output:)" <<std::endl << dToG(path,0.01) << std::endl;
-
-	//std::cout << "file contains svg element!" << std::endl;
-
-
-	// Dig into the network.
-
-	/*for(XMLElement* e = svg->FirstChildElement("g"); e != NULL; e = e->NextSiblingElement("g")) {
-
-	    std::string wmName = e->Attribute("id");
-	    std::string points = e->FirstChildElement("path")->Attribute("d");
-
-	    tp.shapes.push_back(Shape(wmName,points));
-
-	    std::cout << "Item: " << wmName << ": " << points << std::endl;
-	    tp.shapes[0];
-	}*/
-
-
+	//std::cout << path << std::endl;
+	fout << dToG(path,0.02);
+	fout.close();
+	//std::cout << "(Output:)" <<std::endl << dToG(path,1) << std::endl;
 
 	return 0;
 }
