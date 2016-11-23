@@ -3,7 +3,7 @@
 // Author      : Charles Holtforster
 // Version     :
 // Copyright   :
-// Description : Converts SVGs to some sort of tool path.
+// Description : Converts SVG paths into G-code tool paths.
 //============================================================================
 
 #include "tinyxml2.h"
@@ -31,7 +31,7 @@ void gToG (std::string coords, std::ofstream fout) {
 	ss << coords;
 }
 
-string dToG (string d, double scaleFactor = 1) {
+string dToG (ToolPath d, double scaleFactor = 1) {
 	// Example format:
 	// m 0,1055.84 815.67999,0 0,-1055.68 L 0,0.16 0,1055.84 Z
 	// M is T0 M6, G0
@@ -41,23 +41,26 @@ string dToG (string d, double scaleFactor = 1) {
 
 	std::stringstream output;
 
+	Vector2D datum = d.datum;
+
 	Vector2D point;
 	bool relative = false;
 
 	Vector2D start;
 
 	std::stringstream str;
-	str << d;
+	str << d.command;
 
 	char curCom = 'L';
 	char priorCom = '\0';
-
-	char rip = ' ';
 
 	int vecCount = 0;
 
 	str.clear();
 	std::cout << "Starting interpretation..." << std::endl<< std::endl;
+
+	output << "(" << d.name << ": " << d.datum << ")" << std::endl;
+
 	while (str) {
 		/*while (!((
 				(str.peek()&0b11011111) >= 'A' && (str.peek()&0b11011111) <= 'Z') ||
@@ -117,7 +120,7 @@ string dToG (string d, double scaleFactor = 1) {
 
 
 
-
+			// Read cooordinates
 		} else if ((str.peek() >= '0' && str.peek() <= '9') || str.peek() == '-') {
 			std::cout << "Vector start is " << (char)str.peek() << std::endl;
 			// Should be a vector.
@@ -131,7 +134,7 @@ string dToG (string d, double scaleFactor = 1) {
 			if (relative) {
 				point += newPoint;
 			} else {
-				point = newPoint;
+				point = newPoint + datum;
 			}
 
 			Vector2D curPoint = point;
@@ -144,6 +147,7 @@ string dToG (string d, double scaleFactor = 1) {
 
 			switch (curCom) {
 			case 'M': // Queue move, immediate.
+				output << "T0 M6" << std::endl;
 				output << "G0 X" << curPoint.x << " Y" << curPoint.y << std::endl;
 				curCom = 'L'; // Next coordinates are implicit Lines, with same relativity setting.
 				start = newPoint;
@@ -156,7 +160,6 @@ string dToG (string d, double scaleFactor = 1) {
 				break;
 			case 'L': // Queue move, linear.
 				output << "G1 X" << curPoint.x << " Y" << curPoint.y << std::endl;
-				output << "T1 M6" << std::endl;
 				break;
 			case '2':
 				curCom = '1';
@@ -188,48 +191,59 @@ string dToG (string d, double scaleFactor = 1) {
 	return output.str();
 }
 
+void gTree(XMLElement *r, std::vector<ToolPath> & output) {
+	std::cout << "Element " << r->Name() << std::endl;
+	XMLElement * temp = r->FirstChildElement("g");
+	do  {
+		std::cout << "Element " << temp->Name() << std::endl;
+		if (temp->FirstChildElement("path")) {
+			output.push_back(ToolPath(
+					temp->Attribute("id") ? temp->Attribute("id") : "",
+					temp->FirstChildElement("path")->Attribute("d"),
+					temp->Attribute("transform") ? temp->Attribute("transform") : "")
+				);
+		} else {
+			gTree(temp, output);
+		}
+	} while (temp = temp->NextSiblingElement("g"));
+}
+
 int main() {
 	XMLDocument doc;
-	doc.LoadFile("Maple_Leaf.svg");
+	doc.LoadFile("testSVG.svg");
 	//doc.LoadFile("TestSVG.svg");
 
 	std::ofstream fout("G-out.ncc");
-
-	ToolPath tp;
 
 	XMLElement* svg = doc.RootElement();
 
 	//std::cout << svg->Name() << std::endl;
 
-	string path = "";
+	// TODO: Make this MUCH more versatile.
 
-	// TODO: Make this more versatile.
+	std::vector<ToolPath> paths;
+
+	paths.push_back(ToolPath("TESTOBJECTION","M 0,0 L 100,100","translate(100,100)"));
 
 	if (svg->FirstChildElement("g")) {
-		if (svg->FirstChildElement("g")->FirstChildElement("g")) {
-			if (svg->FirstChildElement("g")->FirstChildElement("g")->FirstChildElement("path")) {
-				//while (svg->FirstChildElement("g")->FirstChildElement("g")->FirstChildElement("path")->NextSibling()) {
-					path = svg->FirstChildElement("g")->FirstChildElement("g")->FirstChildElement("path")->Attribute("d");
-				//}
-			}
-		} else if (svg->FirstChildElement("g")->FirstChildElement("path")) {
-			path = svg->FirstChildElement("g")->FirstChildElement("path")->Attribute("d");
-		}
+		gTree(svg,paths);
 	} else {
 		std::cout << "SVG root contains no g elements.\n";
 		if (svg->FirstChildElement("path")) {
-			path = svg->FirstChildElement("path")->Attribute("d");
+			paths.push_back(ToolPath("Primary",svg->FirstChildElement("path")->Attribute("d"),""));
 		}
 		if (svg->NoChildren()) {
 			// Hopefully, it's an SVG file with a single path element!
-			path = svg->Attribute("d");
+			paths.push_back(ToolPath("Primary",svg->Attribute("d"),""));
 		}
 	}
 
 
 
 	//std::cout << path << std::endl;
-	fout << dToG(path,0.02);
+	for (std::vector<ToolPath>::const_iterator path = paths.begin(); path != paths.end(); ++path) {
+		fout << dToG(*path,0.005);
+	}
 	fout.close();
 	//std::cout << "(Output:)" <<std::endl << dToG(path,1) << std::endl;
 
