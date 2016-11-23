@@ -77,7 +77,7 @@ string dToG (ToolPath d, double scaleFactor = 1) {
 			// Opcode!
 			std::cout << "Operator is " << (char)str.peek() << std::endl;
 
-			priorCom = curCom;
+			priorCom = curCom&0b11011111;
 
 			char com = ' ';
 			str >> com;
@@ -97,14 +97,14 @@ string dToG (ToolPath d, double scaleFactor = 1) {
 				curCom = com;
 				break;
 			case 'C': // Engage pen. Queue move, curved.. // TODO: Make this actually work.
-				output << "T3 M6" << std::endl;
+				//if (priorCom != curCom) output << "T1 M6" << std::endl;
 				output << "(C)" << std::endl;
 				//std::cout << "T0 M6" << std::endl;
 				curCom = '2';
 				break;
 			case 'L': // Disengage pen. Queue move, linear.
 				// TODO: configure tool changes properly.
-				output << "T1 M6" << std::endl;
+				if (com != priorCom) output << "T1 M6" << std::endl;
 				output << "(L)" << std::endl;
 				curCom = com;
 				break;
@@ -143,14 +143,13 @@ string dToG (ToolPath d, double scaleFactor = 1) {
 
 			std::cout << "Point: " << curPoint << ", "<< curPoint<< std::endl;
 
-			if (!relative) output << "T2 M6" << std::endl;
+			//if (!relative) output << "T2 M6" << std::endl;
 
 			switch (curCom) {
 			case 'M': // Queue move, immediate.
-				output << "T0 M6" << std::endl;
 				output << "G0 X" << curPoint.x << " Y" << curPoint.y << std::endl;
 				curCom = 'L'; // Next coordinates are implicit Lines, with same relativity setting.
-				start = newPoint;
+				start = newPoint+datum;
 				output << "T1 M6" << std::endl;
 				break;
 			case 'C': // Queue move, immediate.
@@ -208,22 +207,25 @@ void gTree(XMLElement *r, std::vector<ToolPath> & output) {
 	} while (temp = temp->NextSiblingElement("g"));
 }
 
-int main() {
+int main(int argc, char* argv[]) {
 	XMLDocument doc;
-	doc.LoadFile("testSVG.svg");
-	//doc.LoadFile("TestSVG.svg");
 
-	std::ofstream fout("G-out.ncc");
+	if (argc < 2) doc.LoadFile(argv[1]);
+	else doc.LoadFile("Maple_Leaf.svg");
+
+	std::ofstream fout;
+
+	if (argc < 3) fout.open("G-out.ncc");
+	else fout.open(argv[2]);
 
 	XMLElement* svg = doc.RootElement();
 
 	//std::cout << svg->Name() << std::endl;
 
-	// TODO: Make this MUCH more versatile.
 
 	std::vector<ToolPath> paths;
 
-	paths.push_back(ToolPath("TESTOBJECTION","M 0,0 L 100,100","translate(100,100)"));
+	//paths.push_back(ToolPath("TESTOBJECTION","M 0,0 L 100,100","translate(100,100)"));
 
 	if (svg->FirstChildElement("g")) {
 		gTree(svg,paths);
@@ -242,7 +244,7 @@ int main() {
 
 	//std::cout << path << std::endl;
 	for (std::vector<ToolPath>::const_iterator path = paths.begin(); path != paths.end(); ++path) {
-		fout << dToG(*path,0.005);
+		fout << dToG(*path,0.1);
 	}
 	fout.close();
 	//std::cout << "(Output:)" <<std::endl << dToG(path,1) << std::endl;
