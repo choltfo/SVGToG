@@ -241,12 +241,10 @@ int main(int argc, char* argv[]) {
 			paths.push_back(ToolPath("Primary",svg->FirstChildElement("path")->Attribute("d"),""));
 		}
 		if (svg->NoChildren()) {
-			// Hopefully, it's an SVG file with a single path element!
+    			// Hopefully, it's an SVG file with a single path element!
 			paths.push_back(ToolPath("Primary",svg->Attribute("d"),""));
 		}
 	}
-
-
 
 	Vector2D origin(atof(svg->Attribute("width")),atof(svg->Attribute("height")));
 
@@ -254,14 +252,10 @@ int main(int argc, char* argv[]) {
 
 	std::cout << "Origin is at " << origin << std::endl;
 
-
-	for (std::vector<ToolPath>::const_iterator path = paths.begin(); path != paths.end(); ++path) {
-		fout << dToG(*path,scale,origin);
+	for (auto&& i : paths) {
+		fout << dToG(i, scale, origin);
 	}
 	fout.close();
 
 	return 0;
 }
-
-
-
