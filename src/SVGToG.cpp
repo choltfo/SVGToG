@@ -14,6 +14,8 @@
 #include <iostream>
 #include <sstream>
 
+#include <cstdlib>
+
 #include "ToolPath.hpp"
 #include "Vector2D.hpp"
 
@@ -31,7 +33,7 @@ void gToG (std::string coords, std::ofstream fout) {
 	ss << coords;
 }
 
-string dToG (ToolPath d, double scaleFactor = 1) {
+string dToG (ToolPath d, double scaleFactor, Vector2D origin) {
 	// Example format:
 	// m 0,1055.84 815.67999,0 0,-1055.68 L 0,0.16 0,1055.84 Z
 	// M is T0 M6, G0
@@ -45,6 +47,8 @@ string dToG (ToolPath d, double scaleFactor = 1) {
 
 	Vector2D point;
 	bool relative = false;
+
+	origin *= scaleFactor;
 
 	Vector2D start;
 
@@ -104,12 +108,12 @@ string dToG (ToolPath d, double scaleFactor = 1) {
 				break;
 			case 'L': // Disengage pen. Queue move, linear.
 				// TODO: configure tool changes properly.
-				if (com != priorCom) output << "T1 M6" << std::endl;
+				//if (com != priorCom) output << "T1 M6" << std::endl;
 				output << "(L)" << std::endl;
 				curCom = com;
 				break;
 			case 'Z': // Close shape.
-				output << "G1 X" << (start*scaleFactor).x << " Y" << (start*scaleFactor).y << std::endl;
+				output << "G1 X" << (start).x << " Y" << (start).y << std::endl;
 				output << "(Z)" << std::endl;
 				point = start;
 				curCom = 'L';
@@ -128,7 +132,6 @@ string dToG (ToolPath d, double scaleFactor = 1) {
 			Vector2D newPoint(0,0);
 			str >> newPoint;
 
-
 			std::cout << "Input: " << newPoint << (relative?", relative":"") << std::endl;
 
 			if (relative) {
@@ -143,13 +146,16 @@ string dToG (ToolPath d, double scaleFactor = 1) {
 
 			std::cout << "Point: " << curPoint << ", "<< curPoint<< std::endl;
 
+			// Perform translation from image space to real space.
+			curPoint = curPoint + origin - Vector2D(0,curPoint.y)*2.0;
+
 			//if (!relative) output << "T2 M6" << std::endl;
 
 			switch (curCom) {
 			case 'M': // Queue move, immediate.
 				output << "G0 X" << curPoint.x << " Y" << curPoint.y << std::endl;
 				curCom = 'L'; // Next coordinates are implicit Lines, with same relativity setting.
-				start = newPoint+datum;
+				start = curPoint;
 				output << "T1 M6" << std::endl;
 				break;
 			case 'C': // Queue move, immediate.
@@ -175,8 +181,6 @@ string dToG (ToolPath d, double scaleFactor = 1) {
 			default:
 				break;
 			}
-
-
 
 			vecCount++;
 
@@ -240,14 +244,19 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
+	double scale = 0.4;
+
+	Vector2D origin(atof(svg->Attribute("width")),atof(svg->Attribute("height")));
+
+	origin.x = 0;
+
+	std::cout << "Origin is at " << origin << std::endl;
 
 
-	//std::cout << path << std::endl;
 	for (std::vector<ToolPath>::const_iterator path = paths.begin(); path != paths.end(); ++path) {
-		fout << dToG(*path,0.1);
+		fout << dToG(*path,scale,origin);
 	}
 	fout.close();
-	//std::cout << "(Output:)" <<std::endl << dToG(path,1) << std::endl;
 
 	return 0;
 }
