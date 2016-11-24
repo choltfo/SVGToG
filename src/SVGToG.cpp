@@ -147,7 +147,8 @@ string dToG (ToolPath d, double scaleFactor, Vector2D origin) {
 			std::cout << "Point: " << curPoint << ", "<< curPoint<< std::endl;
 
 			// Perform translation from image space to real space.
-			curPoint = curPoint + origin - Vector2D(0,curPoint.y)*2.0;
+            curPoint &= Vector2D(1, -1);
+            curPoint += origin;
 
 			//if (!relative) output << "T2 M6" << std::endl;
 

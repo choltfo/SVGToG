@@ -35,7 +35,7 @@ float Vector2D::GetSegmentDist(Vector2D v, Vector2D w) {
 	float l2 = (v-w).GetSqrMag();  // i.e. |w-v|^2 -  avoid a sqrt
 	if (l2 == 0.0) return ((*this)-v).GetMag();   // v == w case
 	// Consider the line extending the segment, parameterized as v + t (w - v).
-	// We find projection of point p onto the line. 
+	// We find projection of point p onto the line.
 	// It falls where t = [(p-v) . (w-v)] / |w-v|^2
 	float t = ((*this)-v).DotProduct(w-v) / l2;
 	if (t < 0.0) return ((*this)-v).GetMag();       // Beyond the 'v' end of the segment
@@ -116,6 +116,10 @@ Vector2D Vector2D::operator*(double t) const {
 Vector2D Vector2D::operator/(double t) const {
     double f = 1.0 / t;
     return (Vector2D(x * f, y * f));
+}
+
+Vector2D Vector2D::operator&(const Vector2D& v) const {
+    return Vector2D(x * v.x, y * v.y);
 }
 
 bool Vector2D::operator==(const Vector2D& v) const {
