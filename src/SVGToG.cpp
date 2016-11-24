@@ -88,10 +88,9 @@ string dToG (ToolPath d, double scaleFactor, Vector2D origin) {
 
 			relative = com > 'Z'; // lowercase is a relative command.
 
-			com = com&0b11011111;
+			com &= 0b11011111;
 
 			std::cout << com << (relative?", relative":"") << std::endl;
-
 
 			switch (com) {
 			case 'M': // Disengage pen. Queue move, immediate.
@@ -121,8 +120,6 @@ string dToG (ToolPath d, double scaleFactor, Vector2D origin) {
 			default: // Unimplemented command.
 				break;
 			}
-
-
 
 			// Read cooordinates
 		} else if ((str.peek() >= '0' && str.peek() <= '9') || str.peek() == '-') {
