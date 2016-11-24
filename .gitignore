@@ -51,3 +51,5 @@ Temporary Items
 /Debug/src
 \.cproject
 \.project
+*.svg
+G-out.ncc
