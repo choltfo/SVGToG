@@ -215,7 +215,9 @@ int main(int argc, char* argv[]) {
 	XMLDocument doc;
 
 	if (argc < 2) doc.LoadFile(argv[1]);
-	else doc.LoadFile("Maple_Leaf.svg");
+	else doc.LoadFile("Turtle-Graphics_Polyspiral.svg");
+
+	double scale = 0.2;
 
 	std::ofstream fout;
 
@@ -244,7 +246,7 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
-	double scale = 0.4;
+
 
 	Vector2D origin(atof(svg->Attribute("width")),atof(svg->Attribute("height")));
 
