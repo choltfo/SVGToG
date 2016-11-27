@@ -25,10 +25,6 @@ public:
     double GetMag();
 	double GetSqrMag();
 
-	bool CheckCollision(Vector2D a, Vector2D b, float d);
-
-	float GetSegmentDist(Vector2D, Vector2D);
-
 	double DotProduct(Vector2D b);
 	double Project(Vector2D b);
 
@@ -42,6 +38,7 @@ public:
     Vector2D operator-(const Vector2D& v) const;
     Vector2D operator*(double t) const;
     Vector2D operator/(double t) const;
+    Vector2D operator&(const Vector2D& v) const;
     bool operator==(const Vector2D& v) const;
     bool operator!=(const Vector2D& v) const;
     Vector2D& Rotate(double angle);

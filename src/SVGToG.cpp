@@ -69,10 +69,9 @@ string dToG (ToolPath d, double scaleFactor, Vector2D origin) {
 
 			relative = com > 'Z'; // lowercase is a relative command.
 
-			com = com&0b11011111;
+			com &= 0b11011111;
 
 			std::cout << com << (relative?", relative":"") << std::endl;
-
 
 			switch (com) {
 			case 'M': // Disengage pen. Queue move, immediate.
@@ -98,8 +97,6 @@ string dToG (ToolPath d, double scaleFactor, Vector2D origin) {
 				break;
 			}
 
-
-
 			// Read cooordinates
 		} else if ((str.peek() >= '0' && str.peek() <= '9') || str.peek() == '-') {
 			std::cout << "Vector start is " << (char)str.peek() << std::endl;
@@ -123,7 +120,8 @@ string dToG (ToolPath d, double scaleFactor, Vector2D origin) {
 			std::cout << "Point: " << curPoint << ", "<< curPoint<< std::endl;
 
 			// Perform translation from image space to real space.
-			curPoint = curPoint + origin - Vector2D(0,curPoint.y)*2.0;
+            curPoint &= Vector2D(1, -1);
+            curPoint += origin;
 
 			//if (!relative) output << "T2 M6" << std::endl;
 
@@ -209,7 +207,7 @@ int main(int argc, char* argv[]) {
 	if (svg->FirstChildElement("g")) {
 		gTree(svg,paths);
 	} else {
-		std::cout << "SVG root contains no g elements.\n";
+		std::cout << "SVG root contains no g elements." << std::endl;
 		if (svg->FirstChildElement("path")) {
 			paths.push_back(ToolPath("Primary",svg->FirstChildElement("path")->Attribute("d"),""));
 		}
@@ -218,14 +216,11 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
-
-
-	Vector2D origin(atof(svg->Attribute("width")),atof(svg->Attribute("height")));
-
-	origin.x = 0;
+	Vector2D origin(0,atof(svg->Attribute("height")));
 
 	std::cout << "Origin is at " << origin << std::endl;
 
+	// For every located tool path, create G-code and append it to the file.
 	for (std::vector<ToolPath>::const_iterator path = paths.begin(); path != paths.end(); ++path) {
 		fout << dToG(*path,scale,origin);
 	}
@@ -233,6 +228,3 @@ int main(int argc, char* argv[]) {
 
 	return 0;
 }
-
-
-

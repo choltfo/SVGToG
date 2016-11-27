@@ -26,25 +26,6 @@ double Vector2D::GetSqrMag() {
 	return (x*x) + (y*y);
 }
 
-bool Vector2D::CheckCollision(Vector2D a, Vector2D b, float d) {
-	return fabs(GetSegmentDist(a,b)) < d;
-}
-
-float Vector2D::GetSegmentDist(Vector2D v, Vector2D w) {
-	// Return minimum distance between line segment vw and point p
-	float l2 = (v-w).GetSqrMag();  // i.e. |w-v|^2 -  avoid a sqrt
-	if (l2 == 0.0) return ((*this)-v).GetMag();   // v == w case
-	// Consider the line extending the segment, parameterized as v + t (w - v).
-	// We find projection of point p onto the line. 
-	// It falls where t = [(p-v) . (w-v)] / |w-v|^2
-	float t = ((*this)-v).DotProduct(w-v) / l2;
-	if (t < 0.0) return ((*this)-v).GetMag();       // Beyond the 'v' end of the segment
-	else if (t > 1.0) return ((*this)-w).GetMag();  // Beyond the 'w' end of the segment
-	Vector2D projection = v + (w - v)*t;  // Projection falls on the segment
-	return ((*this)-projection).GetMag();
-}
-
-
 // Returns the dot product of this and b.
 double Vector2D::DotProduct(Vector2D b) {
 	return (x*b.x)+(y*b.y);
@@ -116,6 +97,10 @@ Vector2D Vector2D::operator*(double t) const {
 Vector2D Vector2D::operator/(double t) const {
     double f = 1.0 / t;
     return (Vector2D(x * f, y * f));
+}
+
+Vector2D Vector2D::operator&(const Vector2D& v) const {
+    return Vector2D(x * v.x, y * v.y);
 }
 
 bool Vector2D::operator==(const Vector2D& v) const {
