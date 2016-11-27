@@ -1,10 +1,9 @@
-//============================================================================
-// Name        : SVGToG.cpp
-// Author      : Charles Holtforster
-// Version     :
-// Copyright   :
-// Description : Converts SVG paths into G-code tool paths.
-//============================================================================
+// Final project, group 16
+// Deus Ex Machina: a plot device
+// November 2016
+// C++ code
+
+// Generates G-code from SVG paths.
 
 #include "tinyxml2.h"
 
@@ -19,20 +18,10 @@
 #include "ToolPath.hpp"
 #include "Vector2D.hpp"
 
-
-//namespace tx2 = tinyxml2; // Becuase "tinyxml2" is long.
-
 using namespace tinyxml2;
 using std::string;
-//using namespace std;
 
-double sFactor = 1.0;
-
-void gToG (std::string coords, std::ofstream fout) {
-	std::stringstream ss;
-	ss << coords;
-}
-
+// Convert path 
 string dToG (ToolPath d, double scaleFactor, Vector2D origin) {
 	// Example format:
 	// m 0,1055.84 815.67999,0 0,-1055.68 L 0,0.16 0,1055.84 Z
@@ -66,17 +55,9 @@ string dToG (ToolPath d, double scaleFactor, Vector2D origin) {
 	output << "(" << d.name << ": " << d.datum << ")" << std::endl;
 
 	while (str) {
-		/*while (!((
-				(str.peek()&0b11011111) >= 'A' && (str.peek()&0b11011111) <= 'Z') ||
-				(str.peek() >= '0' && str.peek() <= '9'))
-			) {
-			std::cout << "Peek is '" << (char)str.peek() << '\'' << std::endl;
-			str >> rip; // Munch through, one char at a time!
-			test++;
-		}*/
 
-		// std::cout << "Found data: " << (char)str.peek()<< std::endl;
 		// These can upper case or lower case.
+		// Use a bitmask to always get upercase characters.
 		if ((str.peek()&0b11011111) >= 'A' && (str.peek()&0b11011111) <= 'Z') {
 			// Opcode!
 			std::cout << "Operator is " << (char)str.peek() << std::endl;
@@ -96,19 +77,14 @@ string dToG (ToolPath d, double scaleFactor, Vector2D origin) {
 			switch (com) {
 			case 'M': // Disengage pen. Queue move, immediate.
 				output << "T0 M6" << std::endl;
-				//std::cout << "T0 M6" << std::endl;
 				output << "(M)" << std::endl;
 				curCom = com;
 				break;
-			case 'C': // Engage pen. Queue move, curved.. // TODO: Make this actually work.
-				//if (priorCom != curCom) output << "T1 M6" << std::endl;
+			case 'C': // Engage pen. Queue move, curved..
 				output << "(C)" << std::endl;
-				//std::cout << "T0 M6" << std::endl;
 				curCom = '2';
 				break;
 			case 'L': // Disengage pen. Queue move, linear.
-				// TODO: configure tool changes properly.
-				//if (com != priorCom) output << "T1 M6" << std::endl;
 				output << "(L)" << std::endl;
 				curCom = com;
 				break;
@@ -159,7 +135,6 @@ string dToG (ToolPath d, double scaleFactor, Vector2D origin) {
 				output << "T1 M6" << std::endl;
 				break;
 			case 'C': // Queue move, immediate.
-				//output << "G1 X" << newPoint.x << " Y" << newPoint.y << std::endl;
 				curCom = '1';
 				if (relative)point -= newPoint;
 				break;
@@ -194,6 +169,7 @@ string dToG (ToolPath d, double scaleFactor, Vector2D origin) {
 	return output.str();
 }
 
+// Go through SVG tree arrangement to find all paths and add to ToolPath vector.
 void gTree(XMLElement *r, std::vector<ToolPath> & output) {
 	std::cout << "Element " << r->Name() << std::endl;
 	XMLElement * temp = r->FirstChildElement("g");
@@ -211,27 +187,24 @@ void gTree(XMLElement *r, std::vector<ToolPath> & output) {
 	} while (temp = temp->NextSiblingElement("g"));
 }
 
+// Primary access point for program.
 int main(int argc, char* argv[]) {
 	XMLDocument doc;
 
-	if (argc < 2) doc.LoadFile(argv[1]);
-	else doc.LoadFile("Turtle-Graphics_Polyspiral.svg");
-
-	double scale = 0.2;
+	if (argc > 2) doc.LoadFile(argv[1]);
+	else doc.LoadFile("Maple_Leaf.svg");
+	// XMLDocument does not need closing, since it reads and parses all data before closing immediately.
+	
+	double scale = 0.3;
 
 	std::ofstream fout;
 
-	if (argc < 3) fout.open("G-out.ncc");
-	else fout.open(argv[2]);
+	if (argc > 3) fout.open(argv[2]);
+	else fout.open("G-out.ncc");
 
 	XMLElement* svg = doc.RootElement();
 
-	//std::cout << svg->Name() << std::endl;
-
-
 	std::vector<ToolPath> paths;
-
-	//paths.push_back(ToolPath("TESTOBJECTION","M 0,0 L 100,100","translate(100,100)"));
 
 	if (svg->FirstChildElement("g")) {
 		gTree(svg,paths);
@@ -241,7 +214,6 @@ int main(int argc, char* argv[]) {
 			paths.push_back(ToolPath("Primary",svg->FirstChildElement("path")->Attribute("d"),""));
 		}
 		if (svg->NoChildren()) {
-			// Hopefully, it's an SVG file with a single path element!
 			paths.push_back(ToolPath("Primary",svg->Attribute("d"),""));
 		}
 	}
@@ -253,7 +225,6 @@ int main(int argc, char* argv[]) {
 	origin.x = 0;
 
 	std::cout << "Origin is at " << origin << std::endl;
-
 
 	for (std::vector<ToolPath>::const_iterator path = paths.begin(); path != paths.end(); ++path) {
 		fout << dToG(*path,scale,origin);
