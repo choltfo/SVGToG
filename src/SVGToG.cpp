@@ -21,7 +21,8 @@
 using namespace tinyxml2;
 using std::string;
 
-// Convert path 
+// Convert path
+// Charles Holtforster
 string dToG (ToolPath d, double scaleFactor, Vector2D origin) {
 	// Example format:
 	// m 0,1055.84 815.67999,0 0,-1055.68 L 0,0.16 0,1055.84 Z
@@ -167,6 +168,7 @@ string dToG (ToolPath d, double scaleFactor, Vector2D origin) {
 	return output.str();
 }
 
+// Ian Frosst
 // Go through SVG tree arrangement to find all paths and add to ToolPath vector.
 void gTree(XMLElement *r, std::vector<ToolPath> & output) {
 	std::cout << "Element " << r->Name() << std::endl;
@@ -185,12 +187,13 @@ void gTree(XMLElement *r, std::vector<ToolPath> & output) {
 	} while (temp = temp->NextSiblingElement("g"));
 }
 
+// Ian Frosst
 // Primary access point for program.
 int main(int argc, char* argv[]) {
 	XMLDocument doc;
 
 	if (argc > 2) doc.LoadFile(argv[1]);
-	else doc.LoadFile("Maple_Leaf.svg");
+	else doc.LoadFile("Maple_Leaf.svg"); // Program was generally run from IDE, where changing this was easier.
 	// XMLDocument does not need closing, since it reads and parses all data before closing immediately.
 	
 	double scale = 0.3;

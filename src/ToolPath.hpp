@@ -12,6 +12,7 @@
 #include <vector>
 #include <string>
 
+// Charles Holtforster
 // A named path starting from a place.
 struct ToolPath {
 	std::string name;
@@ -24,6 +25,8 @@ struct ToolPath {
 		datum = Vector2D(0,0);
 	}
 	
+	// Charles Holtforster
+	// A constructor with far too much data processing inside it.
 	ToolPath (std::string na, std::string com, std::string transform) {
 		name = na;
 		command = com;
